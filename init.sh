@@ -120,9 +120,10 @@ echo "#certificate#${PUB_CERT}#certificate#"
 chown multichain:multichain start.sh
 chmod 700 start.sh
 
-# install Apache, PHP and monitoring page (unprotected for now)
+# install Apache, PHP, tools and monitoring page (unprotected for now)
 apt-get install -y apache2 > /dev/null
 apt-get install -y php > /dev/null
+apt-get install -y sysstat
 rm /var/www/html/index.html
 wget -q -O /var/www/html/index.php https://raw.githubusercontent.com/MultiChain/azure-test/master/index.php
 
