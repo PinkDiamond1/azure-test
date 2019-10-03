@@ -122,9 +122,6 @@ sleep 5
 done
 EOF
 
-chown multichain:multichain start.sh
-chmod 700 start.sh
-
 # create script to run diagnostic commands
 cat <<EOF >diagnostics.sh
 echo 'getinfo >>>>>'
@@ -142,16 +139,23 @@ curl -k -u$RPC_USER:$RPC_PASSWORD --data-binary '{"method":"getpeerinfo"}' 'http
 echo '<<<<< getpeerinfo'
 EOF
 
-chown multichain:multichain diagnostics.sh
-chmod 700 diagnostics.sh
-
-#allow Apache user to get diagnostics
-cat <<EOF >/etc/sudoers.d/www-data-multichain
-www-data ALL=(multichain) NOPASSWD:/home/multichain/diagnostics.sh
+# create script to get debug log lines
+cat <<EOF >getdebuglog.sh
+tail -n 10000 /home/multichain/.multichain/$CHAIN_NAME/debug.log
 EOF
 
-PUB_CERT=$(base64 -w0 cert.pem)
+# set ownership and permissions for all scripts
+chown multichain:multichain start.sh diagnostics.sh getdebuglog.sh
+chmod 700 start.sh diagnostics.sh getdebuglog.sh
 
+# allow apache web server user to get run specific scripts
+cat <<EOF >/etc/sudoers.d/www-data-multichain
+www-data ALL=(multichain) NOPASSWD:/home/multichain/diagnostics.sh
+www-data ALL=(multichain) NOPASSWD:/home/multichain/getdebuglog.sh
+EOF
+
+
+PUB_CERT=$(base64 -w0 cert.pem)
 echo "#certificate#${PUB_CERT}#certificate#"
 
 # install monitoring page (unprotected for now)
