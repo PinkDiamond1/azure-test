@@ -126,20 +126,24 @@ chown multichain:multichain start.sh
 chmod 700 start.sh
 
 # create script to run diagnostic commands
-cat <<EOF multichain-diagnostics.sh
-multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getinitstatus
-echo -e '<<<<< getinitstatus'
-multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getinfo
-echo -e '<<<<< getinfo'
-multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getmempoolinfo
-echo -e '<<<<< getmempoolinfo'
-multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getwalletinfo
-echo -e '<<<<< getwalletinfo'
-multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getpeerinfo
-echo -e '<<<<< getpeerinfo'
+cat <<EOF >diagnostics.sh
+multichain-cli -datadir=/home/multichain/.multichain/$CHAIN_NAME/ -requestout=null -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD chain1 getinfo
+echo '<<<<< getinfo'
+multichain-cli -datadir=/home/multichain/.multichain/$CHAIN_NAME/ -requestout=null -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD chain1 getmempoolinfo
+echo '<<<<< getmempoolinfo'
+multichain-cli -datadir=/home/multichain/.multichain/$CHAIN_NAME/ -requestout=null -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD chain1 getwalletinfo
+echo '<<<<< getwalletinfo'
+multichain-cli -datadir=/home/multichain/.multichain/$CHAIN_NAME/ -requestout=null -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD chain1 getpeerinfo
+echo '<<<<< getpeerinfo'
 EOF
 
-chown multichain:
+chown multichain:multichain diagnostics.sh
+chmod 700 diagnostics.sh
+
+#allow Apache user to get diagnostics
+cat <<EOF >/etc/sudoers.d/www-data-multichain
+www-data ALL=(multichain) NOPASSWD:/home/multichain/diagnostics.sh
+EOF
 
 PUB_CERT=$(base64 -w0 cert.pem)
 
