@@ -1,22 +1,32 @@
 #!/usr/bin/env bash
 
-# install multichain
+# create script to download and install latest multichain 2.0
+cat <<EOF >/root/multichain-2.0-latest-download-install.sh
 cd /tmp
-wget -q -O multichain.tar.gz 'https://www.multichain.com/download/multichain-2.0.3.tar.gz'
+rm -fr multichain*
+wget -q 'https://www.multichain.com/download/multichain-2.0-latest.tar.gz'
 while [ $? -ne 0 ]; do
   sleep 5
-  wget -q -O multichain.tar.gz 'https://www.multichain.com/download/multichain-2.0.3.tar.gz'
+  wget -q 'https://www.multichain.com/download/multichain-2.0-latest.tar.gz'
 done
-
-tar -xvzf multichain.tar.gz
+tar -xvzf multichain-2.0-latest.tar.gz
 cd multichain-*
 mv multichaind multichain-cli multichain-util /usr/local/bin
 cd ..
 rm -rf multichain*
+EOF
 
-# install utils
+chmod u+x /root/multichain-2.0-latest-download-install.sh
+
+# run the script to download and install latest multichain 2.0
+/root/multichain-2.0-latest-download-install.sh
+
+# install required utilities, Apache, PHP
 apt-get update -y > /dev/null
 apt-get install -y jq > /dev/null
+apt-get install -y apache2 > /dev/null
+apt-get install -y php > /dev/null
+apt-get install -y sysstat > /dev/null
 
 # configure automatic start on reboot
 cat <<EOF > /etc/rc.local
@@ -112,21 +122,32 @@ sleep 5
 done
 EOF
 
+chown multichain:multichain start.sh
+chmod 700 start.sh
+
+# create script to run diagnostic commands
+cat <<EOF multichain-diagnostics.sh
+multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getinitstatus
+echo -e '<<<<< getinitstatus'
+multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getinfo
+echo -e '<<<<< getinfo'
+multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getmempoolinfo
+echo -e '<<<<< getmempoolinfo'
+multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getwalletinfo
+echo -e '<<<<< getwalletinfo'
+multichain-cli -rpcssl -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD $CHAIN_NAME getpeerinfo
+echo -e '<<<<< getpeerinfo'
+EOF
+
+chown multichain:
+
 PUB_CERT=$(base64 -w0 cert.pem)
 
 echo "#certificate#${PUB_CERT}#certificate#"
 
-
-chown multichain:multichain start.sh
-chmod 700 start.sh
-
-# install Apache, PHP, tools and monitoring page (unprotected for now)
-apt-get install -y apache2 > /dev/null
-apt-get install -y php > /dev/null
-apt-get install -y sysstat
+# install monitoring page (unprotected for now)
 rm /var/www/html/index.html
 wget -q -O /var/www/html/index.php https://raw.githubusercontent.com/MultiChain/azure-test/master/index.php
-
 
 # run start script loop
 su - -c 'nohup ./start.sh &' multichain
