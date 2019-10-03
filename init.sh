@@ -4,19 +4,19 @@
 cat <<EOF >/root/multichain-2.0-latest-download-install.sh
 cd /tmp
 rm -fr multichain*
-wget -q 'https://www.multichain.com/download/multichain-2.0-latest.tar.gz'
+wget -q -O multichain.tar.gz 'https://www.multichain.com/download/multichain-2.0-latest.tar.gz'
 while [ $? -ne 0 ]; do
   sleep 5
-  wget -q 'https://www.multichain.com/download/multichain-2.0-latest.tar.gz'
+  wget -q -O multichain.tar.gz 'https://www.multichain.com/download/multichain-2.0-latest.tar.gz'
 done
-tar -xvzf multichain-2.0-latest.tar.gz
+tar -xvzf multichain.tar.gz
 cd multichain-*
 mv multichaind multichain-cli multichain-util /usr/local/bin
 cd ..
 rm -rf multichain*
 EOF
 
-chmod u+x /root/multichain-2.0-latest-download-install.sh
+chmod 700 /root/multichain-2.0-latest-download-install.sh
 
 # run the script to download and install latest multichain 2.0
 /root/multichain-2.0-latest-download-install.sh
@@ -127,13 +127,18 @@ chmod 700 start.sh
 
 # create script to run diagnostic commands
 cat <<EOF >diagnostics.sh
-multichain-cli -datadir=/home/multichain/.multichain/$CHAIN_NAME/ -requestout=null -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD chain1 getinfo
-echo '<<<<< getinfo'
-multichain-cli -datadir=/home/multichain/.multichain/$CHAIN_NAME/ -requestout=null -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD chain1 getmempoolinfo
-echo '<<<<< getmempoolinfo'
-multichain-cli -datadir=/home/multichain/.multichain/$CHAIN_NAME/ -requestout=null -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD chain1 getwalletinfo
-echo '<<<<< getwalletinfo'
-multichain-cli -datadir=/home/multichain/.multichain/$CHAIN_NAME/ -requestout=null -rpcport=8000 -rpcuser=$RPC_USER -rpcpassword=$RPC_PASSWORD chain1 getpeerinfo
+echo 'getinfo >>>>>'
+curl -k -u$RPC_USER:$RPC_PASSWORD --data-binary '{"method":"getinfo"}' 'https://127.0.0.1:8000/'
+echo '<<<<< getinfo | getblockchainparams >>>>>'
+curl -k -u$RPC_USER:$RPC_PASSWORD --data-binary '{"method":"getblockchainparams"}' 'https://127.0.0.1:8000/'
+echo '<<<<< getblockchainparams | getmempoolinfo >>>>>'
+curl -k -u$RPC_USER:$RPC_PASSWORD --data-binary '{"method":"getmempoolinfo"}' 'https://127.0.0.1:8000/'
+echo '<<<<< getmempoolinfo | getwalletinfo >>>>>'
+curl -k -u$RPC_USER:$RPC_PASSWORD --data-binary '{"method":"getwalletinfo"}' 'https://127.0.0.1:8000/'
+echo '<<<<< getwalletinfo | listblocks >>>>>'
+curl -k -u$RPC_USER:$RPC_PASSWORD --data-binary '{"method":"listblocks","params":[-1, true]}' 'https://127.0.0.1:8000/'
+echo '<<<<< listblocks | getpeerinfo >>>>>'
+curl -k -u$RPC_USER:$RPC_PASSWORD --data-binary '{"method":"getpeerinfo"}' 'https://127.0.0.1:8000/'
 echo '<<<<< getpeerinfo'
 EOF
 
