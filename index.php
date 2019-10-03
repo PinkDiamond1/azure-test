@@ -1,4 +1,10 @@
 <?php
+  if (isset($_GET['getdebuglog'])) {
+    header('Content-Type: text/plain'); 
+    passthru('sudo -u multichain /home/multichain/getdebuglog.sh');
+    exit;
+  }
+
   $lines=explode("\n", file_get_contents('/proc/meminfo'));
   $meminfo=array();
   foreach ($lines as $line) {
@@ -159,5 +165,8 @@
     number_format($disktotal/1073741824, 1).' GB'
   );
 ?>
+  <p>
+    <a href="./?getdebuglog" target="_blank">View last lines of debug log</a>
+  <p>
   </body>
 </html>
