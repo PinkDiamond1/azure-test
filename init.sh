@@ -10,6 +10,7 @@ apt-get update > /dev/null
 apt-get install -y jq software-properties-common > /dev/null
 add-apt-repository -y ppa:certbot/certbot
 apt-get install -y certbot
+apt-get install -y sysstat > /dev/null
 
 # read script parameters
 export CONFIG=$1
@@ -49,12 +50,15 @@ export MC_P2P_PORT=7000
 export MC_LOCAL_RPC=http://127.0.0.1:$MC_RPC_PORT
 export MC_P2P_ENDPOINT=${CHAIN_NAME}@${IP}:${MC_P2P_PORT}
 export MC_DOWNLOAD_URL=https://www.multichain.com/download/multichain-2.0-latest.tar.gz
+export MC_VERSION_URL=https://www.multichain.com/download/multichain-2.0-latest.json
 
 export MC_START_SCRIPT=$OS_USER_HOME/start.sh
-export MC_INSTALL_SCRIPT=/root/multichain-2.0-latest-download-install.sh
+export MC_DOWNLOAD_SCRIPT=/root/multichain-2.0-latest-download.sh
+export MC_INSTALL_SCRIPT=/root/multichain-install.sh
 export MC_DIAGNOSTIC_SCRIPT=$OS_USER_HOME/diagnostics.sh
 export MC_LOG_SCRIPT=$OS_USER_HOME/getdebuglog.sh
 export MC_SERVICE=/lib/systemd/system/multichain.service
+export MC_SERVICE_SCRIPT=/root/systemctl-multichain.sh
 
 export CERTBOT_FLAG="--register-unsafely-without-email"
 [[ -n "$EMAIL" ]] && export CERTBOT_FLAG="-m ${EMAIL}"
@@ -69,8 +73,8 @@ export NGINX_RELOAD_SCRIPT=/etc/letsencrypt/renewal-hooks/deploy/reload_nginx.sh
 
 export DASHBOARD_PHP=https://raw.githubusercontent.com/MultiChain/azure-test/master/index.php
 
-# create script to download and install latest multichain 2.0
-cat <<EOF >$MC_INSTALL_SCRIPT
+# create scripts to download latest multichain 2.0
+cat <<EOF >$MC_DOWNLOAD_SCRIPT
 cd /tmp
 rm -fr multichain*
 wget -q -O multichain.tar.gz '$MC_DOWNLOAD_URL'
@@ -79,14 +83,21 @@ while [ $? -ne 0 ]; do
   wget -q -O multichain.tar.gz '$MC_DOWNLOAD_URL'
 done
 tar -xvzf multichain.tar.gz
-cd multichain-*
+mv multichain-* multichain-install
+wget -q -O multichain-version.json '$MC_VERSION_URL'
+EOF
+
+# create script to install downloaded multichain
+cat <<EOF >$MC_INSTALL_SCRIPT
+cd /tmp/multichain-install
 mv multichaind multichain-cli multichain-util /usr/local/bin
 cd ..
 rm -rf multichain*
 EOF
 
 # run the script to download and install latest multichain 2.0
-chmod 700 $MC_INSTALL_SCRIPT
+chmod 700 $MC_DOWNLOAD_SCRIPT $MC_INSTALL_SCRIPT
+$MC_DOWNLOAD_SCRIPT
 $MC_INSTALL_SCRIPT
 
 # retrieve certificate using letsencrypt certbot
@@ -204,8 +215,10 @@ EOF
 systemctl enable multichain
 systemctl start multichain
 
-
-apt-get install -y sysstat > /dev/null
+# create nginx-accessible script to start and stop node
+cat <<EOF >$MC_SERVICE_SCRIPT
+systemctl \$1 multichain
+EOF
 
 # create script to run diagnostic commands
 cat <<EOF >$MC_DIAGNOSTIC_SCRIPT
@@ -231,12 +244,17 @@ EOF
 
 # set ownership and permissions for nginx-accessible scripts
 chown ${OS_USER}:${OS_GROUP} $MC_DIAGNOSTIC_SCRIPT $MC_LOG_SCRIPT
-chmod 700 $MC_DIAGNOSTIC_SCRIPT $MC_LOG_SCRIPT
+chmod 700 $MC_DIAGNOSTIC_SCRIPT $MC_LOG_SCRIPT $MC_SERVICE_SCRIPT
 
-# allow nginx user to run specific scripts
+# allow nginx user to run specific scripts as multichain user
 cat <<EOF >/etc/sudoers.d/www-data-multichain
 www-data ALL=(${OS_USER}) NOPASSWD:$MC_DIAGNOSTIC_SCRIPT
 www-data ALL=(${OS_USER}) NOPASSWD:$MC_LOG_SCRIPT
+EOF
+
+# allow nginx user to run specific scripts as root user
+cat <<EOF >/etc/sudoers.d/www-data-root
+www-data ALL=(root) NOPASSWD:$MC_SERVICE_SCRIPT
 EOF
 
 # install monitoring page
