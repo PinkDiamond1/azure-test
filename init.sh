@@ -53,7 +53,8 @@ export MC_DOWNLOAD_URL=https://www.multichain.com/download/multichain-2.0-latest
 export MC_VERSION_URL=https://www.multichain.com/download/multichain-2.0-latest.json
 
 export MC_START_SCRIPT=$OS_USER_HOME/start.sh
-export MC_DOWNLOAD_SCRIPT=/root/multichain-2.0-latest-download.sh
+export MC_CHECK_SCRIPT=/root/multichain-check-latest.sh
+export MC_DOWNLOAD_SCRIPT=/root/multichain-download-latest.sh
 export MC_INSTALL_SCRIPT=/root/multichain-install.sh
 export MC_DIAGNOSTIC_SCRIPT=$OS_USER_HOME/diagnostics.sh
 export MC_LOG_SCRIPT=$OS_USER_HOME/getdebuglog.sh
@@ -73,18 +74,23 @@ export NGINX_RELOAD_SCRIPT=/etc/letsencrypt/renewal-hooks/deploy/reload_nginx.sh
 
 export DASHBOARD_PHP=https://raw.githubusercontent.com/MultiChain/azure-test/master/index.php
 
-# create scripts to download latest multichain 2.0
+# create script to check latest version
+cat <<EOF >$MC_CHECK_SCRIPT
+wget -q -O - '$MC_VERSION_URL'
+EOF
+
+# create script to download latest multichain 2.0
 cat <<EOF >$MC_DOWNLOAD_SCRIPT
 cd /tmp
 rm -fr multichain*
 wget -q -O multichain.tar.gz '$MC_DOWNLOAD_URL'
-while [ $? -ne 0 ]; do
+while [ \$? -ne 0 ]; do
   sleep 5
   wget -q -O multichain.tar.gz '$MC_DOWNLOAD_URL'
 done
 tar -xvzf multichain.tar.gz
 mv multichain-* multichain-install
-wget -q -O multichain-version.json '$MC_VERSION_URL'
+wget -q -O multichain-install/version.json '$MC_VERSION_URL'
 EOF
 
 # create script to install downloaded multichain
@@ -96,7 +102,7 @@ rm -rf multichain*
 EOF
 
 # run the script to download and install latest multichain 2.0
-chmod 700 $MC_DOWNLOAD_SCRIPT $MC_INSTALL_SCRIPT
+chmod 700 $MC_DOWNLOAD_SCRIPT $MC_INSTALL_SCRIPT $MC_CHECK_SCRIPT
 $MC_DOWNLOAD_SCRIPT
 $MC_INSTALL_SCRIPT
 
@@ -255,6 +261,9 @@ EOF
 # allow nginx user to run specific scripts as root user
 cat <<EOF >/etc/sudoers.d/www-data-root
 www-data ALL=(root) NOPASSWD:$MC_SERVICE_SCRIPT
+www-data ALL=(root) NOPASSWD:$MC_CHECK_SCRIPT
+www-data ALL=(root) NOPASSWD:$MC_DOWNLOAD_SCRIPT
+www-data ALL=(root) NOPASSWD:$MC_INSTALL_SCRIPT
 EOF
 
 # install monitoring page
