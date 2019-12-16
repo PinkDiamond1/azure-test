@@ -148,7 +148,14 @@
     </p>
     <p>
       (connecting to node <?php echo htmlspecialchars($getinitstatus['connectaddress'].':'.$getinitstatus['connectport'])?>
-      with address <?php echo htmlspecialchars($getinitstatus['handshakelocal'])?> for <?php echo $timestring?>. 
+<?php
+    if (strlen($getinitstatus['handshakelocal'])) {
+?>
+      with address <?php echo htmlspecialchars($getinitstatus['handshakelocal'])?> 
+<?php
+    }
+?>
+      for <?php echo $timestring?>)
     </p>
 <?php
   } elseif (isset($getinfo)) {
